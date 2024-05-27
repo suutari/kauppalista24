@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import hashlib
 import os
 import platform
 import sys
@@ -7,6 +8,7 @@ import zipfile
 
 PB_VER = "0.22.12"
 PB_BASE_URL = "https://github.com/pocketbase/pocketbase/releases/download"
+PB_CHECKSUM_FILE = "checksums.txt"
 
 
 def main():
@@ -18,8 +20,26 @@ def main():
 
     is_new_zip_file = not os.path.exists(zip_fn)
     if is_new_zip_file:
+        with open(PB_CHECKSUM_FILE, "r") as csum_file:
+            csum_data = csum_file.read()
+        if zip_fn not in csum_data:
+            csum_url = f"{PB_BASE_URL}/v{PB_VER}/{PB_CHECKSUM_FILE}"
+            ans = input(f"Do you want to update {PB_CHECKSUM_FILE}? [Y/n] ")
+            if ans.lower() in ("y", "yes", ""):
+                urllib.request.urlretrieve(csum_url, PB_CHECKSUM_FILE)
+                with open(PB_CHECKSUM_FILE, "r") as csum_file:
+                    csum_data = csum_file.read()
+            else:
+                raise SystemExit(f"{zip_fn} not found from {PB_CHECKSUM_FILE}")
         print(f"Downloading PocketBase from: {url}")
         urllib.request.urlretrieve(url, zip_fn)
+
+        with open(zip_fn, "rb") as fp:
+            csum = hashlib.sha256(fp.read()).hexdigest()
+        if csum not in csum_data:
+            os.remove(zip_fn)
+            raise SystemExit(f"Invalid checksum {csum}")
+        print(f"Checksum OK ({csum})")
 
     pb_exe = f"pocketbase{'.exe' if sys.platform == 'win32' else ''}"
     if is_new_zip_file or not os.path.exists(pb_exe):

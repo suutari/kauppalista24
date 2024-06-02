@@ -58,11 +58,17 @@ async function haeKauppalistanAsia(pb, listaId, teksti) {
 export async function kuunteleMuutoksia(listaId, callback) {
     const pb = getPocketBase();
     const asiat = pb.collection('kauppalistan_asiat');
-    return await asiat.subscribe('*', (data) => {
-        if (data.record.lista === listaId) {
-            callback(data);
+    return await asiat.subscribe(
+        '*',
+        (data) => {
+            if (data.record.lista === listaId) {
+                callback(data);
+            }
+        },
+        {
+            filter: pb.filter('lista={:listaId}', {listaId}),
         }
-    });
+    );
 }
 
 function getPocketBase() {
